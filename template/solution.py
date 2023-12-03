@@ -49,7 +49,7 @@ if __name__ == "__main__":
             sol_part1 = main1(file="puzzle.txt")
             print(sol_part1)
 
-    if PART == "2":
+    elif PART == "2":
 
         if MODE == "test":
             unit_tests(file="calibration2.txt", fun=part2)
