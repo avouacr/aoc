@@ -1,6 +1,5 @@
 import sys
 
-
 def part1(input_str):
     game_id = input_str.split(':')[0].split(' ')[1]
     # Splitting the string into segments
