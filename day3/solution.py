@@ -50,12 +50,16 @@ def get_full_number(matrix, x, y):
     return int(number), (x, start_y)
 
 
-def main1(file):
+def get_matrix_as_array(file):
     with open(file, 'r') as f:
         matrix = f.read()
-
     rows = matrix.strip().split('\n')
     matrix = np.array([list(row) for row in rows])
+    return matrix
+
+
+def main1(file):
+    matrix = get_matrix_as_array(file)
     pos_char = get_pos_characters(matrix)
     candidates = []
 
@@ -78,11 +82,7 @@ def get_pos_stars(matrix):
 
 
 def main2(file):
-    with open(file, 'r') as f:
-        matrix = f.read()
-
-    rows = matrix.strip().split('\n')
-    matrix = np.array([list(row) for row in rows])
+    matrix = get_matrix_as_array(file)
 
     pos_char = get_pos_stars(matrix)
     gear_ratios = []
