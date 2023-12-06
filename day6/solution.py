@@ -2,7 +2,7 @@ import sys
 import re
 
 
-def parse_races_info(file):
+def parse_races_info(file, part):
 
     with open(file, 'r') as file:
         text = file.read()
@@ -10,14 +10,17 @@ def parse_races_info(file):
     # Splitting the text into lines
     lines = text.strip().split('\n')
 
-    # Extracting numbers from each line
-    times = [int(num) for num in re.findall(r'\d+', lines[0])]
-    distances = [int(num) for num in re.findall(r'\d+', lines[1])]
+    if part == 1:
+        times = [int(num) for num in re.findall(r'\d+', lines[0])]
+        distances = [int(num) for num in re.findall(r'\d+', lines[1])]
+        result = list(zip(times, distances))
+    elif part == 2:
+        numbers = re.findall(r'\d+', text)
+        combined_number1 = int(''.join(numbers[:len(numbers)//2]))
+        combined_number2 = int(''.join(numbers[len(numbers)//2:]))
+        result = (combined_number1, combined_number2)
 
-    # Pairing times and distances
-    pairs = list(zip(times, distances))
-
-    return pairs
+    return result
 
 
 def distance_traveled(race_time, hold_time):
@@ -35,7 +38,7 @@ def get_number_ways_record_race(race_time, record_distance):
 
 def main1(file):
 
-    races_info = parse_races_info(file)
+    races_info = parse_races_info(file, part=1)
 
     solution = 1
     for race_time, record_distance in races_info:
@@ -46,10 +49,12 @@ def main1(file):
 
 def main2(file):
 
-    with open(file, 'r') as file:
-        lines = file.read().splitlines()
+    races_info = parse_races_info(file, part=2)
 
-    return ""
+    race_time, record_distance = races_info
+    solution = get_number_ways_record_race(race_time, record_distance)
+
+    return solution
 
 
 if __name__ == "__main__":
@@ -68,7 +73,7 @@ if __name__ == "__main__":
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main2(file="calibration.txt") == 71503
         elif MODE == "main":
             sol_part2 = main2(file="puzzle.txt")
             print(sol_part2)
