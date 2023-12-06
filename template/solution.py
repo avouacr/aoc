@@ -1,14 +1,6 @@
 import sys
 
 
-def part1(input):
-    pass
-
-
-def part2(input):
-    pass
-
-
 def main1(file):
 
     with open(file, 'r') as file:
