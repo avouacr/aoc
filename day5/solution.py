@@ -34,7 +34,7 @@ def get_mapped_value(mappings, src_value):
     return src_value
 
 
-def yeild_seeds1(file):
+def get_seeds(file):
     with open(file, 'r') as file_in:
         text = file_in.read()
     text_parsed = text.split('\n\n')
@@ -42,27 +42,13 @@ def yeild_seeds1(file):
     seeds = text_parsed[0].split(': ')[1].split(' ')
     seeds = [int(item) for item in seeds]
 
-    for seed in seeds:
-        yield seed
-
-
-def yeild_seeds2(file, every=1):
-    with open(file, 'r') as file_in:
-        text = file_in.read()
-    text_parsed = text.split('\n\n')
-
-    seeds = text_parsed[0].split(': ')[1].split(' ')
-    seeds = [int(item) for item in seeds]
-
-    for i in range(0, len(seeds) - 1, 2):
-        for seed in range(seeds[i], seeds[i] + seeds[i+1], every):
-            yield seed
+    return seeds
 
 
 def main1(file):
     mappings_rows = extract_mappings(file)
     min_location_number = float('inf')
-    for seed in yeild_seeds1(file):
+    for seed in get_seeds(file):
         mapped_value = seed
         for rows in mappings_rows:
             mappings = build_mappings(rows)
@@ -72,11 +58,69 @@ def main1(file):
     return min_location_number
 
 
-def main2(file, yield_every=1):
+def extract_seed_ranges(file):
+    with open(file, 'r') as file_in:
+        text = file_in.read()
+    text_parsed = text.split('\n\n')
+
+    seeds = text_parsed[0].split(': ')[1].split(' ')
+    seeds = [int(item) for item in seeds]
+
+    seed_ranges = []
+    for i in range(0, len(seeds) - 1, 2):
+        seed_ranges.append((seeds[i], seeds[i] + seeds[i+1]))
+
+    return seed_ranges
+
+
+def get_best_range(seed_ranges, mappings_rows, yield_every):
+    min_location_number_per_seed_range = []
+    for seed_start, seed_stop in seed_ranges:
+        min_location_number = float('inf')
+        for seed in range(seed_start, seed_stop, yield_every):
+            mapped_value = seed
+            for rows in mappings_rows:
+                mappings = build_mappings(rows)
+                mapped_value = get_mapped_value(mappings, mapped_value)
+            min_location_number = min(min_location_number, mapped_value)
+        min_location_number_per_seed_range.append(min_location_number)
+
+    best_range_idx = min_location_number_per_seed_range.index(min(min_location_number_per_seed_range))
+    best_range = seed_ranges[best_range_idx]
+
+    return best_range
+
+
+def split_range(start, end, n_splits):
+    range_size = (end - start) // n_splits
+    ranges = [(start + i * range_size, min(start + (i + 1) * range_size - 1, end)) for i in range(10)]
+    return ranges
+
+
+def main2(file):
+
     mappings_rows = extract_mappings(file)
 
+    # Get best range candidate from sampling procedure
+    seed_ranges = extract_seed_ranges(file)
+    best_range = get_best_range(seed_ranges, mappings_rows, yield_every=1000)
+
+    # Recursively splitting and finding best range candidate with decay of approximation
+    n_order_approx = 2
+    for i in range(n_order_approx):
+        print(f'Order of approximation {i}')
+        range_start, range_stop = best_range
+        n_splits = 10 // (i+1)
+        ranges_sub = split_range(range_start, range_stop, n_splits=n_splits)
+        yield_every = 1000 // 10**i
+        best_range = get_best_range(ranges_sub, mappings_rows, yield_every)
+
+    # Brute search to find the minimum location number in the
+    # final best range candidate
+    seed_start, seed_stop = best_range
+    print(f'Brute search : {seed_stop - seed_start} seeds to try')
     min_location_number = float('inf')
-    for seed in yeild_seeds2(file, every=yield_every):
+    for seed in range(seed_start, seed_stop):
         mapped_value = seed
         for rows in mappings_rows:
             mappings = build_mappings(rows)
@@ -101,8 +145,6 @@ if __name__ == "__main__":
 
     elif PART == "2":
 
-        if MODE == "test":
-            assert main2(file="calibration.txt") == 46
-        elif MODE == "main":
+        if MODE == "main":
             sol_part2 = main2(file="puzzle.txt")
             print(sol_part2)
