@@ -22,7 +22,7 @@ def get_mapped_value(mappings, src_value):
     for mapping in mappings:
         src_start, src_end, offset = mapping
         if src_start <= src_value < src_end:
-            src_value = src_value + offset
+            src_value += offset
 
     return src_value
 
@@ -57,6 +57,7 @@ def main1(file):
     min_location_number = float('inf')
     for seed in yeild_seeds1(file):
         mapped_value = get_mapped_value(mappings, seed)
+        print(seed, mapped_value)
         min_location_number = min(min_location_number, mapped_value)
 
     return min_location_number
