@@ -3,16 +3,16 @@ import sys
 
 def main1(file):
 
-    with open(file, 'r') as file:
-        lines = file.read().splitlines()
+    with open(file, 'r') as file_in:
+        lines = file_in.read().splitlines()
 
     return ""
 
 
 def main2(file):
 
-    with open(file, 'r') as file:
-        lines = file.read().splitlines()
+    with open(file, 'r') as file_in:
+        lines = file_in.read().splitlines()
 
     return ""
 
