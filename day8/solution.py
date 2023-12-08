@@ -1,4 +1,6 @@
 import sys
+import math
+import itertools
 
 
 def parse_input(file):
@@ -18,30 +20,46 @@ def parse_input(file):
     return instructions, mapping
 
 
-def compute_steps(instructions, mapping, start_node='AAA'):
+def compute_steps_part1(instructions, mapping):
     instruction_to_int = {'L': 0, 'R': 1}
 
-    node = start_node
+    node = 'AAA'
     step = 0
     while node != 'ZZZ':
-        direction = instruction_to_int[instructions[step % len(instructions)]]
-        node = mapping[node][direction]
+        direction_int = instruction_to_int[instructions[step % len(instructions)]]
+        node = mapping[node][direction_int]
         step += 1
     return step
 
 
-def main1(file):
+def get_next_node(node, direction_int, mapping):
+    return mapping[node][direction_int]
+
+
+def compute_steps_part2(instructions, mapping):
+    instruction_to_int = {'L': 0, 'R': 1}
+
+    starting_nodes = [n for n in mapping.keys() if n[-1] == 'A']
+
+    steps_to_z = []
+    for node in starting_nodes:
+        for step, instruction in enumerate(itertools.cycle(instructions)):
+            if node.endswith("Z"):
+                steps_to_z.append(step)
+                break
+            direction_int = instruction_to_int[instruction]
+            node = get_next_node(node, direction_int, mapping)
+
+    # Needed because each individual path loops
+    lcm_steps_to_z = math.lcm(*steps_to_z)
+
+    return lcm_steps_to_z
+
+
+def main(file, f_compute_steps):
     instructions, mapping = parse_input(file)
-    n_steps = compute_steps(instructions, mapping)
+    n_steps = f_compute_steps(instructions, mapping)
     return n_steps
-
-
-def main2(file):
-
-    with open(file, 'r') as file_in:
-        lines = file_in.read().splitlines()
-
-    return ""
 
 
 if __name__ == "__main__":
@@ -52,16 +70,16 @@ if __name__ == "__main__":
     if PART == "1":
 
         if MODE == "test":
-            assert main1('calibration11.txt') == 2
-            assert main1('calibration12.txt') == 6
+            assert main('calibration11.txt', f_compute_steps=compute_steps_part1) == 2
+            assert main('calibration12.txt', f_compute_steps=compute_steps_part1) == 6
         elif MODE == "main":
-            sol_part1 = main1(file="puzzle.txt")
+            sol_part1 = main(file="puzzle.txt", f_compute_steps=compute_steps_part1)
             print(sol_part1)
 
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main(file="calibration2.txt", f_compute_steps=compute_steps_part2) == 6
         elif MODE == "main":
-            sol_part2 = main2(file="puzzle.txt")
+            sol_part2 = main(file="puzzle.txt", f_compute_steps=compute_steps_part2)
             print(sol_part2)
