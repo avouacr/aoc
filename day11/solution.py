@@ -49,7 +49,7 @@ def sum_shortest_path_lengths(coords_galaxies):
     return sum_distances
 
 
-def main(file, expansion_factor=2):
+def main(file, expansion_factor):
     grid = parse_grid(file)
 
     rows_to_expand = get_rows_to_expand(grid)
@@ -70,9 +70,9 @@ if __name__ == "__main__":
     if PART == "1":
 
         if MODE == "test":
-            assert main('calibration.txt') == 374
+            assert main('calibration.txt', expansion_factor=2) == 374
         elif MODE == "main":
-            sol_part1 = main(file="puzzle.txt")
+            sol_part1 = main(file="puzzle.txt", expansion_factor=2)
             print(sol_part1)
 
     elif PART == "2":
