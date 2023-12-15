@@ -1,5 +1,4 @@
 import sys
-from collections import OrderedDict
 
 
 def parse_file(file):
@@ -19,7 +18,7 @@ def hash(input_str):
 
 
 def fill_boxes(steps):
-    boxes = {i: OrderedDict() for i in range(256)}
+    boxes = {i: {} for i in range(256)}
 
     for step in steps:
         if '-' in step:
