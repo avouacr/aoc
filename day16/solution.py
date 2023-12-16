@@ -71,8 +71,8 @@ def propagate(grid, start_task):
     store_energized = set()
 
     where_to_mirrors = {
-    '/': {'E': 'N', 'W': 'S', 'S': 'W', 'N': 'E'},
-    '\\': {'E': 'S', 'W': 'N', 'S': 'E', 'N': 'W'}
+        '/': {'E': 'N', 'W': 'S', 'S': 'W', 'N': 'E'},
+        '\\': {'E': 'S', 'W': 'N', 'S': 'E', 'N': 'W'}
     }
 
     while queue:
