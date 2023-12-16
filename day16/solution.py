@@ -41,7 +41,7 @@ def process_row(row, x_start, y_start, direction, where_to_mirrors):
             elif direction == 'W':
                 pos_i = (x_start, y_start - i - 1)
             elif direction == 'S':
-                pos_i = ( x_start + i + 1, y_start)
+                pos_i = (x_start + i + 1, y_start)
             elif direction == 'N':
                 pos_i = (x_start - i - 1, y_start)
 
@@ -78,7 +78,8 @@ def propagate(grid, start_task):
     while queue:
         (x_start, y_start), direction = queue[0]
         row = get_row(grid, x_start, y_start, direction)
-        new_tasks, energized = process_row(row, x_start, y_start, direction, where_to_mirrors)
+        new_tasks, energized = process_row(row, x_start, y_start,
+                                           direction, where_to_mirrors)
         store_energized.update(energized)
         queue.extend([task for task in new_tasks if task not in tasks_done])
         tasks_done.add(queue.pop(0))
