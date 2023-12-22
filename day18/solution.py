@@ -22,8 +22,15 @@ def parse_input(file, part):
     return steps
 
 
-def build_dig(steps):
+def get_min_xy(ranges):
+    min_x, min_y = float('inf'), float('inf')
+    for start, end in ranges:
+        min_x = min(min_x, start[0], end[0])
+        min_y = min(min_y, start[1], end[1])
+    return min_x, min_y
 
+
+def get_ranges_and_corners(steps):
     dir_to_array = {
         'U': (-1, 0),
         'D': (1, 0),
@@ -31,82 +38,117 @@ def build_dig(steps):
         'L': (0, -1)
     }
 
-    dig = set()
     x, y = 0, 0
 
-    for direction, n_steps in steps:
-        for n in range(n_steps):
-            x += dir_to_array[direction][0]
-            y += dir_to_array[direction][1]
-            dig.add((x, y))
+    ranges = []
+    corners = {}
+    for i, (direction, n_steps) in enumerate(steps):
+        x_start, y_start = x, y
+        x += dir_to_array[direction][0] * n_steps
+        y += dir_to_array[direction][1] * n_steps
+        ranges.append([(x_start, y_start), (x, y)])
 
-    # Start on (0, 0)
-    min_x = min(coords[0] for coords in dig)
-    min_y = min(coords[1] for coords in dig)
-    dig = set([(x - min_x, y - min_y) for x, y in dig])
+        # Handle corners
+        # Case 0 : first row if right travel
+        if i == 0 and direction == 'R':
+            corners[(0, 0)] = {'is_switch': False}
+        # Case 1 : horizontal travel
+        if direction == 'L':
+            corners[(x, y)] = {'is_switch': False}
+            if steps[i-1][0] == steps[i+1][0]:
+                corners[(x, y)]['is_switch'] = True
+        # Case 2 : vertical travel
+        if i + 2 < len(steps):
+            if direction in ['D', 'U'] and steps[i+1][0] == 'R':
+                corners[(x, y)] = {'is_switch': False}
+                if steps[i+2][0] == direction:
+                    corners[(x, y)]['is_switch'] = True
 
-    return dig
+    # Translate to have only positive coordinates
+    x_min, y_min = get_min_xy(ranges)
+    ranges = [((r[0][0] - x_min, r[0][1] - y_min), (r[1][0] - x_min, r[1][1] - y_min)) for r in ranges]
+    corners = {(k[0] - x_min, k[1] - y_min): v for k, v in corners.items()}
+
+    return ranges, corners
 
 
-def if_corner_get_direction(x, y, dig):
-    direction = ''
-    if (x-1, y) in dig:
-        direction = 'U'
-    elif (x+1, y) in dig:
-        direction = 'D'
+def get_candidate_ranges(ranges, x):
 
-    if ((x, y-1) in dig or (x, y+1) in dig) and direction:
-        return True, direction
-    return False, ''
+    candidate_ranges = []
+    for r in ranges:
+        x_start, y_start = r[0]
+        x_end, y_end = r[1]
+
+        if x_start == x_end and y_start > y_end:
+            y_start, y_end = y_end, y_start
+
+        cond1 = (x_start < x < x_end or x_end < x < x_start)  # Normal cases : simple border
+        cond2 = (x == x_start and y_start != y_end)  # Border cases : corners
+        if cond1 or cond2:
+            candidate_ranges.append(((x_start, y_start), (x_end, y_end)))
+
+        # Sort ranges in order of appearance from left to right
+        candidate_ranges = sorted(candidate_ranges, key=lambda x: x[0][1])
+
+    return candidate_ranges
 
 
-def count_lava(dig):
+def get_n_rows(ranges):
+    flat_list = [coordinate for sublist in ranges for coordinate in sublist]
+    x_coords, y_coords = zip(*flat_list)
+    return max(x_coords) + 1
 
-    n_rows = max(coords[0] for coords in dig) + 1
-    n_cols = max(coords[1] for coords in dig) + 1
 
+def compute_lava_row(x, ranges, corners, verbose=0):
     lava = 0
-    fill = set()
-    for x in range(n_rows):
-        inside = False
-        n_successive_dig = 0
-        n_corners_seen = 0
-        last_corner_direction = ''
-        for y in range(n_cols):
-            if (x, y) in dig:
+    candidate_ranges = get_candidate_ranges(ranges, x)
+    if verbose:
+        print(candidate_ranges)
+    inside = False
+    for i, r in enumerate(candidate_ranges):
+        x_start, y_start = r[0]
+        x_end, y_end = r[1]
+        if x_start == x_end and y_start > y_end:
+            y_start, y_end = y_end, y_start
+
+        # Normal cases : simple border
+        if x_start < x < x_end or x_end < x < x_start:
+            inside = not inside
+            if inside:
+                y_start_next_range = candidate_ranges[i+1][0][1]
+                lava += y_start_next_range - y_end
+            if not inside:
                 lava += 1
-                n_successive_dig += 1
+            if verbose:
+                print("normal", (x_start, y_start), (x_end, y_end), f'lava: {lava}')
 
-                is_corner, corner_direction = if_corner_get_direction(x, y, dig)
-                if is_corner:
-                    # Case of corners
-                    if n_corners_seen == 0:
-                        # First corner, do nothing
-                        last_corner_direction = corner_direction
-                        n_corners_seen += 1
-                    elif n_corners_seen == 1:
-                        # Second corner : if different direction than last one, switch `inside`
-                        if last_corner_direction != corner_direction:
-                            inside = not inside
-                        n_corners_seen = 0
-                else:
-                    # Normal border : get in or get out
-                    if n_successive_dig == 1:
-                        inside = not inside
+        # Border cases : corners
+        elif (x_start, y_start) in corners:
+            if corners[(x_start, y_start)]['is_switch']:
+                inside = not inside
+            if inside:
+                y_start_next_range = candidate_ranges[i+1][0][1]
+                lava += y_start_next_range - y_start
+            if not inside:
+                lava += y_end - y_start + 1
+            if verbose:
+                print("corner", (x_start, y_start), (x_end, y_end), corners[(x_start, y_start)]['is_switch'], f'lava: {lava}')
 
-            else:
-                if inside:
-                    fill.add((x, y))
-                    lava += 1
-                n_successive_dig = 0
+    return lava
 
+
+def compute_total_lava(ranges, corners):
+    n_rows = get_n_rows(ranges)
+    lava = 0
+    for x in range(n_rows):
+        lava += compute_lava_row(x, ranges, corners)
     return lava
 
 
 def main(file, part):
     steps = parse_input(file, part)
-    dig = build_dig(steps)
-    return count_lava(dig)
+    ranges, corners = get_ranges_and_corners(steps)
+    return compute_total_lava(ranges, corners)
 
 
 if __name__ == "__main__":
@@ -125,7 +167,8 @@ if __name__ == "__main__":
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main(file="calibration.txt", part=2) == 952408144115
         elif MODE == "main":
-            sol_part2 = main2(file="puzzle.txt")
+            print('start')
+            sol_part2 = main(file="puzzle.txt", part=2)
             print(sol_part2)
