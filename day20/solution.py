@@ -1,6 +1,10 @@
 import sys
 import re
 from collections import deque
+import copy
+import math
+
+import networkx as nx
 
 
 def parse_input(file):
@@ -37,7 +41,7 @@ def parse_input(file):
     # Add test modules to the network
     for module in dst_modules_history:
         if module not in network:
-            network[module] = Test(name=module)
+            network[module] = Unsigned(name=module)
 
     return network
 
@@ -95,10 +99,10 @@ class Conjunction:
         return next_modules
 
 
-class Test:
+class Unsigned:
     def __init__(self, name):
         self.name = name
-        self.nature = 'test'
+        self.nature = 'unsigned'
         self.input_signal = ''
 
     def send_pulse(self, input_signal, module_name_previous, network):
@@ -134,22 +138,69 @@ def repeat_push_button(n, network):
     return total_counts['low'] * total_counts['high']
 
 
-def push_button_until(network):
-    count = 0
-    while network['rx'].input_signal != 'low':
-        push_button(network)
-        count += 1
-    return count
-
-
 def main1(file):
     network = parse_input(file)
     return repeat_push_button(n=1000, network=network)
 
 
+def build_subgraphs(network):
+
+    # Build full networkx graph
+    G = nx.DiGraph()
+    for src in network:
+        if hasattr(network[src], 'dst_modules'):
+            for dst in network[src].dst_modules:
+                G.add_edge(src, dst)
+
+    # Compute subgraphs
+    last_conjunction_inputs = list(network['gh'].input_signals.keys())
+    subgraphs = []
+    for lci in last_conjunction_inputs:
+        asp = nx.all_simple_paths(G, 'broadcaster', lci)
+        subgraph_nodes = set(n for path in asp for n in path)
+        subgraph_nodes.add('gh')
+        subgraph = {name: module for name, module in network.items() if name in subgraph_nodes}
+        subgraph = copy.deepcopy(subgraph)
+        for module in subgraph.values():
+            if hasattr(module, 'dst_modules'):
+                module.dst_modules = tuple([dst for dst in module.dst_modules if dst in subgraph_nodes])
+            if hasattr(module, 'input_signals'):
+                module.input_signals = {k: v for k, v in module.input_signals.items() if k in subgraph_nodes}
+
+        subgraphs.append(subgraph)
+
+    return subgraphs
+
+
+def get_loop_size(subgraph, n_press_button, verbose=0):
+    indxs = []
+    for n in range(n_press_button):
+        queue = deque([('button', 'low', subgraph['broadcaster'])])
+        while queue:
+            module_name_previous, input_signal, module = queue.popleft()
+            if module.name == 'gh' and input_signal == 'high':
+                indxs.append(n)
+            dst_modules_input_signals = module.send_pulse(input_signal=input_signal, 
+                                                          module_name_previous=module_name_previous,
+                                                          network=subgraph)
+            queue.extend(dst_modules_input_signals)
+
+    # Checked :
+    # Each subgraph is a loop
+    # Cycle starts at 0 for each subgraph
+    loop_size = indxs[1] - indxs[0]  
+    return loop_size
+
+
 def main2(file):
     network = parse_input(file)
-    return push_button_until(network)
+    subgraphs = build_subgraphs(network)
+
+    subgraph_loop_sizes = []
+    for subgraph in subgraphs:
+        subgraph_loop_sizes.append(get_loop_size(subgraph, n_press_button=10000, verbose=0))
+
+    return math.lcm(*subgraph_loop_sizes)
 
 
 if __name__ == "__main__":
