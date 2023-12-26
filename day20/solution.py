@@ -123,7 +123,8 @@ def push_button(network, verbose=0):
         queue.extend(dst_modules_input_signals)
         if verbose:
             print(module_name_previous, input_signal, module.name)
-            print([(module_name_previous, input_signal, module.name) for module_name_previous, input_signal, module in queue])
+            print([(module_name_previous, input_signal, module.name)
+                   for module_name_previous, input_signal, module in queue])
             print()
 
     return counts
@@ -163,9 +164,11 @@ def build_subgraphs(network):
         subgraph = copy.deepcopy(subgraph)
         for module in subgraph.values():
             if hasattr(module, 'dst_modules'):
-                module.dst_modules = tuple([dst for dst in module.dst_modules if dst in subgraph_nodes])
+                module.dst_modules = tuple([dst for dst in module.dst_modules
+                                            if dst in subgraph_nodes])
             if hasattr(module, 'input_signals'):
-                module.input_signals = {k: v for k, v in module.input_signals.items() if k in subgraph_nodes}
+                module.input_signals = {k: v for k, v in module.input_signals.items()
+                                        if k in subgraph_nodes}
 
         subgraphs.append(subgraph)
 
@@ -180,19 +183,22 @@ def get_loop_size(subgraph, n_press_button, verbose=0):
             module_name_previous, input_signal, module = queue.popleft()
             if module.name == 'gh' and input_signal == 'high':
                 indxs.append(n)
-            dst_modules_input_signals = module.send_pulse(input_signal=input_signal, 
+            dst_modules_input_signals = module.send_pulse(input_signal=input_signal,
                                                           module_name_previous=module_name_previous,
                                                           network=subgraph)
             queue.extend(dst_modules_input_signals)
 
-    # Checked :
-    # Each subgraph is a loop
-    # Cycle starts at 0 for each subgraph
-    loop_size = indxs[1] - indxs[0]  
+    loop_size = indxs[1] - indxs[0]
     return loop_size
 
 
 def main2(file):
+    # Explanation : gh sends a low signal to rx when its 4 inputs are high
+    # So for each of the 4 subgraphs, we check when the last node sends a high to gh
+    # Checked : this happens every nth button push, with n being constant from the start
+    # So we get the n by comparing any two subsequent occurences
+    # gh sends a low signal when the four subgraphs synchronize on a high
+    # This is the lcm for each cycle cycle size (since it starts at 0)
     network = parse_input(file)
     subgraphs = build_subgraphs(network)
 
