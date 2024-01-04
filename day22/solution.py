@@ -1,5 +1,6 @@
 import sys
 from itertools import product
+from collections import deque
 
 import numpy as np
 
@@ -80,37 +81,59 @@ def get_supports(new_cube_coords, grid):
             if value != 0 and value != cube_id:
                 supports[cube_id].add(value)
 
-    is_supported_by = {}
+    is_supported_by = {cube: set() for cube in supports}
     for cube_id, cubes_supported in supports.items():
         for cube_sup in cubes_supported:
-            if cube_sup not in is_supported_by:
-                is_supported_by[cube_sup] = set()
-            else:
-                is_supported_by[cube_sup].add(cube_id)
+            is_supported_by[cube_sup].add(cube_id)
 
     return supports, is_supported_by
 
 
-def is_distintegratable(cube_id, supports, is_supported_by):
+def is_disintegratable(cube_id, supports, is_supported_by):
     decision = True
-    for supported in supports[cube_id]:
-        if not is_supported_by[supported]:
+    for cube in supports[cube_id]:
+        supported_by = is_supported_by[cube].copy()
+        supported_by.discard(cube_id)
+        if not supported_by:
             decision = False
     return decision
 
 
-def n_distintegratable(supports, is_supported_by):
-    counter_distintegratable = 0
+def n_disintegratable(supports, is_supported_by):
+    counter_disintegratable = 0
     for cube_id in supports:
-        counter_distintegratable += is_distintegratable(cube_id, supports, is_supported_by)
-    return counter_distintegratable
+        counter_disintegratable += is_disintegratable(cube_id, supports, is_supported_by)
+    return counter_disintegratable
 
 
 def main1(file):
     cube_coords, max_zxy = parse_input(file)
     new_cube_coords, grid = falling(cube_coords, max_zxy)
     supports, is_supported_by = get_supports(new_cube_coords, grid)
-    return n_distintegratable(supports, is_supported_by)
+    return n_disintegratable(supports, is_supported_by)
+
+
+def count_chain_reaction(cube_id, supports, is_supported_by):
+    fallen = {cube_id}
+    queue = deque(supports[cube_id])
+    while queue:
+        nxt = queue.popleft()
+        if is_supported_by[nxt].issubset(fallen):
+            fallen.add(nxt)
+            queue.extend(supports[nxt])
+
+    return max(0, len(fallen) - 1)
+
+
+def main2(file):
+    cube_coords, max_zxy = parse_input(file)
+    new_cube_coords, grid = falling(cube_coords, max_zxy)
+    supports, is_supported_by = get_supports(new_cube_coords, grid)
+
+    sum_chain_reaction = 0
+    for cube_id in supports:
+        sum_chain_reaction += count_chain_reaction(cube_id, supports, is_supported_by)
+    return sum_chain_reaction
 
 
 if __name__ == "__main__":
@@ -129,7 +152,7 @@ if __name__ == "__main__":
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main2(file="calibration.txt") == 7
         elif MODE == "main":
             sol_part2 = main2(file="puzzle.txt")
             print(sol_part2)
