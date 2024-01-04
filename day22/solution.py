@@ -1,4 +1,8 @@
 import sys
+import string
+from itertools import product
+
+import numpy as np
 
 
 def main1(file):
