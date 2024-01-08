@@ -2,83 +2,88 @@ import sys
 from collections import deque
 
 import numpy as np
-import networkx as nx
 
 
-def parse_grid(file):
+def parse_grid(file, part):
     with open(file, 'r') as file_in:
         lines = [line.strip() for line in file_in.readlines()]
         grid_array = np.array([list(line) for line in lines])
 
+    if part == 2:
+        grid_array[np.isin(grid_array, ['<', '>', 'v', '^'])] = '.'
+
     return grid_array
 
 
-def is_valid_neighbour(candidate, current, grid, directions):
-    (x, y), coming_from = candidate
+def is_valid_neighbour(candidate, visited, grid):
+    x, y = candidate
     not_forest = (grid[x, y] != '#')
-    not_going_back = any(current[0] + directions[current[1]] != candidate[0])
-    return not_forest and not_going_back
+    not_visited = candidate not in visited
+    return not_forest and not_visited
 
 
-def build_graph(grid):
+def get_candidates(current, grid, directions, visited, part):
     n_rows, n_cols = grid.shape
-    directions = {'U': (-1, 0), 'D': (1, 0), 'L': (0, -1), 'R': (0, 1)}
+    x, y = current
+    candidates = []
+    if part == 1:
+        if grid[x, y] == '.':
+            if x > 0 and grid[x + directions['U'][0], y + directions['U'][1]] != 'v':
+                candidates.append((x + directions['U'][0], y + directions['U'][1]))  # Going up
+            if x < n_rows - 1 and grid[x + directions['U'][0], y + directions['U'][1]] != '^':
+                candidates.append((x + directions['D'][0], y + directions['D'][1]))  # Going down
+            if y > 0 and grid[x + directions['U'][0], y + directions['U'][1]] != '>':
+                candidates.append((x + directions['L'][0], y + directions['L'][1]))  # Going left
+            if y < n_cols - 1 and grid[x + directions['U'][0], y + directions['U'][1]] != '<':
+                candidates.append((x + directions['R'][0], y + directions['R'][1]))  # Going right
+        elif grid[x, y] == '^':
+            candidates.append((x + directions['U'][0], y + directions['U'][1]))
+        elif grid[x, y] == 'v':
+            candidates.append((x + directions['D'][0], y + directions['D'][1]))
+        elif grid[x, y] == '<':
+            candidates.append((x + directions['L'][0], y + directions['L'][1]))
+        elif grid[x, y] == '>':
+            candidates.append((x + directions['R'][0], y + directions['R'][1]))
 
-    G = nx.DiGraph()
-
-    start = (np.array((0, 1)), 'U')
-    queue = deque([start])
-    while queue:
-        current = queue.popleft()
-        x, y = current[0]
-
-        candidates = []
+    elif part == 2:
         if grid[x, y] == '.':
             if x > 0:
-                candidates.append((current[0] + directions['U'], 'D'))  # Going up
+                candidates.append((x + directions['U'][0], y + directions['U'][1]))  # Going up
             if x < n_rows - 1:
-                candidates.append((current[0] + directions['D'], 'U'))  # Going down
+                candidates.append((x + directions['D'][0], y + directions['D'][1]))  # Going down
             if y > 0:
-                candidates.append((current[0] + directions['L'], 'R'))  # Going left
+                candidates.append((x + directions['L'][0], y + directions['L'][1]))  # Going left
             if y < n_cols - 1:
-                candidates.append((current[0] + directions['R'], 'L'))  # Going right
-        elif grid[x, y] == '^':
-            candidates.append((current[0] + directions['U'], 'D'))
-        elif grid[x, y] == 'v':
-            candidates.append((current[0] + directions['D'], 'U'))
-        elif grid[x, y] == '<':
-            candidates.append((current[0] + directions['L'], 'R'))
-        elif grid[x, y] == '>':
-            candidates.append((current[0] + directions['R'], 'L'))
+                candidates.append((x + directions['R'][0], y + directions['R'][1]))  # Going right
 
-        candidates_valid = [can for can in candidates
-                            if is_valid_neighbour(can, current, grid, directions)]
-        for candidate in candidates_valid:
-            queue.append(candidate)
-            G.add_edge(tuple(current[0]), tuple(candidate[0]))
-
-    return G
+    candidates = [cand for cand in candidates if is_valid_neighbour(cand, visited, grid)]
+    return candidates
 
 
-def get_longest_simple_path(G, start, end):
-    simple_paths = list(nx.all_simple_paths(G, start, end))
-    return max([(len(path) - 1) for path in simple_paths])
+def get_longest_path(grid, part):
 
-
-def main1(file):
-    grid = parse_grid(file)
+    directions = {'U': (-1, 0), 'D': (1, 0), 'L': (0, -1), 'R': (0, 1)}
     n_rows, n_cols = grid.shape
-    G = build_graph(grid)
-    len_longest_path = get_longest_simple_path(G, (0, 1), (n_rows-1, n_cols-2))
-    return len_longest_path
+
+    valid_paths = []
+    start = ((0, 1), set())
+    queue = deque([start])
+    while queue:
+        current, visited = queue.popleft()
+        if current == (n_rows - 1, n_cols - 2):
+            valid_paths.append(visited)
+        this_node_visited = visited.copy()
+        this_node_visited.add(current)
+        candidates = get_candidates(current, grid, directions, this_node_visited, part)
+        for can in candidates:
+            queue.append((can, this_node_visited))
+
+    return max([len(path) for path in valid_paths])
 
 
-def main2(file):
-
-    with open(file, 'r') as file_in:
-        lines = file_in.read().splitlines()
-
-    return ""
+def main(file, part):
+    grid = parse_grid(file, part)
+    return get_longest_path(grid, part)
 
 
 if __name__ == "__main__":
@@ -89,15 +94,15 @@ if __name__ == "__main__":
     if PART == "1":
 
         if MODE == "test":
-            assert main1(file="calibration.txt") == 94
+            assert main(file="calibration.txt", part=1) == 94
         elif MODE == "main":
-            sol_part1 = main1(file="puzzle.txt")
+            sol_part1 = main(file="puzzle.txt", part=1)
             print(sol_part1)
 
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main(file="calibration.txt", part=2) == 154
         elif MODE == "main":
-            sol_part2 = main2(file="puzzle.txt")
+            sol_part2 = main(file="puzzle.txt", part=2)
             print(sol_part2)
