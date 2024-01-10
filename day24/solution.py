@@ -1,6 +1,8 @@
 import sys
 import itertools
 
+from z3 import Solver, Real
+
 
 def parse_input(file):
 
@@ -75,6 +77,27 @@ def main1(file, test_area):
     return count_valid_crossings(hailstones, test_area)
 
 
+def solve_system(hailstones):
+    s = Solver()
+
+    x = [Real(f'x_{i}') for i in range(6)]
+    n = [Real(f'n_{i}') for i in range(len(hailstones))]
+
+    for i, (position, velocity) in enumerate(hailstones):
+        s.add(x[0] + n[i] * x[3] == position[0] + n[i] * velocity[0])
+        s.add(x[1] + n[i] * x[4] == position[1] + n[i] * velocity[1])
+        s.add(x[2] + n[i] * x[5] == position[2] + n[i] * velocity[2])
+
+    s.check()
+    results = [int(s.model().eval(var).as_decimal(10)) for var in x + n]
+    return sum(results[:3])
+
+
+def main2(file):
+    hailstones = parse_input(file)
+    return solve_system(hailstones)
+
+
 if __name__ == "__main__":
 
     PART = sys.argv[1]
@@ -91,7 +114,7 @@ if __name__ == "__main__":
     elif PART == "2":
 
         if MODE == "test":
-            assert main2(file="calibration.txt") == ""
+            assert main2(file="calibration.txt") == 47
         elif MODE == "main":
             sol_part2 = main2(file="puzzle.txt")
             print(sol_part2)
