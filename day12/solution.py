@@ -1,5 +1,5 @@
 import sys
-import itertools
+from functools import cache
 
 
 def expand(row):
@@ -20,41 +20,48 @@ def parse_file(file, expand_rows):
 
 
 def parse_row(row):
-    pattern = list(row.split(' ')[0])
+    pattern = row.split(' ')[0]
     rules = tuple(int(n) for n in row.split(' ')[1].split(','))
     return pattern, rules
 
 
-def get_candidates(pattern, rules):
-    n_springs_to_add = sum(rules) - pattern.count('#')
-    coords_qm = [i for i, char in enumerate(pattern) if char == '?']
+@cache
+def count_valid_patterns(pattern, rules):
 
-    candidates = []
-    for combination in itertools.combinations(coords_qm, n_springs_to_add):
-        cand = pattern.copy()
-        for coord in combination:
-            cand[coord] = '#'
-        candidates.append(cand)
+    # print(pattern, rules)
 
-    return candidates
+    if not rules and '#' not in pattern:
+        return 1
+    elif not rules and '#' in pattern:
+        return 0
+    elif not pattern and rules:
+        return 0
 
-
-def is_valid(pattern, rules):
-    lengths_blocs_springs = tuple([sum(1 for _ in g) for k, g in itertools.groupby(pattern)
-                                   if k == '#'])
-    return 1 if lengths_blocs_springs == rules else 0
+    if pattern[0] == '.':
+        return count_valid_patterns(pattern[1:], rules)
+    elif pattern[0] == '#':
+        rule = rules[0]
+        fits = pattern[:rule].replace('?', '#') == ('#' * rule)
+        if len(pattern) > rule:
+            next_is_free = pattern[rule] in '.?'
+        else:
+            next_is_free = True
+        if fits and next_is_free:
+            return count_valid_patterns(pattern[rule+1:], rules[1:])
+        else:
+            return 0
+    else:
+        return count_valid_patterns('.' + pattern[1:], rules) + count_valid_patterns('#' + pattern[1:], rules)
 
 
 def main(file, expand_rows=False):
 
-    count_valid = 0
+    n_combi = 0
     for row in parse_file(file, expand_rows):
         pattern, rules = parse_row(row)
-        candidates = get_candidates(pattern, rules)
-        for cand in candidates:
-            count_valid += is_valid(cand, rules)
+        n_combi += count_valid_patterns(pattern, rules)
 
-    return count_valid
+    return n_combi
 
 
 if __name__ == "__main__":
@@ -75,5 +82,5 @@ if __name__ == "__main__":
         if MODE == "test":
             assert main('calibration.txt', expand_rows=True) == 525152
         elif MODE == "main":
-            sol_part2 = main(file="puzzle.txt")
+            sol_part2 = main(file="puzzle.txt", expand_rows=True)
             print(sol_part2)
